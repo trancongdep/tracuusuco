@@ -3,7 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vận Hành Lưới Điện - Mobile v1.18</title>
+    <title>Vận Hành Lưới Điện - Mobile v1.19</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#004d40">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1165/1165187.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -44,6 +50,9 @@
         .btn-find { background: #d32f2f; }
         .btn-ground { background: #0288d1; }
         .btn-gps { position: absolute; top: 70px; right: 10px; z-index: 2000; background: white; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: none; font-size: 1.2rem; color: #0078d7; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-gps.active { color: #0078d7; border: 2px solid #0078d7; } 
+        .btn-gps.manual { color: #e65100; border: 2px solid #e65100; }
+
         .radio-group { display: flex; flex-direction: row; align-items: center; gap: 30px; margin-bottom: 15px; width: 100%; }
         .radio-group label { margin: 0; font-weight: normal; cursor: pointer; display: flex; align-items: center; font-size: 1rem; }
         .radio-group input { width: 20px; height: 20px; margin-right: 8px; }
@@ -101,13 +110,14 @@
     </div>
 
     <div id="map"></div>
+    <div id="pick-notice" style="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:8px 15px;border-radius:20px;z-index:5000;font-size:0.9rem;display:none;box-shadow:0 4px 10px rgba(0,0,0,0.3);pointer-events:none;">👇 Chấm vào bản đồ để chọn vị trí của bạn</div>
     
     <div class="app-bar">
-        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.18</div>
+        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.19</div>
         <button class="btn-menu" onclick="togglePanel()"><i class="fas fa-bars"></i></button>
     </div>
 
-    <button class="btn-gps" id="btn-gps" onclick="locateUser()"><i class="fas fa-crosshairs"></i></button>
+    <button class="btn-gps" id="btn-gps" onclick="handleGpsClick()"><i class="fas fa-crosshairs"></i></button>
 
     <div id="control-panel">
         <div class="panel-header">
@@ -174,65 +184,33 @@
 
         window.db = getDatabase(app); window.update = update; window.ref = ref; window.onValue = onValue; window.set = set; window.get = get; window.child = child;
         
-        // --- AUTHENTICATION LOGIC ---
         window.signIn = () => {
             signInWithPopup(auth, provider).catch((error) => {
-                document.getElementById('login-status').innerText = "Lỗi đăng nhập: " + error.message;
+                document.getElementById('login-status').innerText = "Lỗi: " + error.message;
             });
         };
 
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                // Logged In
-                checkAndSaveUser(user);
-            } else {
-                // Not Logged In
-                document.getElementById('login-screen').style.top = '0';
-            }
+            if (user) { checkAndSaveUser(user); } 
+            else { document.getElementById('login-screen').style.top = '0'; }
         });
 
         async function checkAndSaveUser(user) {
             const userRef = window.ref(window.db, 'users/' + user.uid);
             let snapshot = await window.get(userRef);
             let userData = snapshot.val();
-            
-            let phoneNumber = "";
-            if (userData && userData.phone) {
-                phoneNumber = userData.phone;
-            } else {
-                // First time or no phone
-                let p = prompt("Vui lòng nhập Số điện thoại của bạn để xác nhận (Bắt buộc):");
-                if(p) phoneNumber = p;
-                else phoneNumber = "Không cung cấp";
-            }
+            let phoneNumber = (userData && userData.phone) ? userData.phone : (prompt("Nhập Số điện thoại xác nhận:") || "Không cung cấp");
 
-            // Save Log
             let nowStr = new Date().toISOString();
             const logRef = window.ref(window.db, 'system_logs/logins/' + Date.now());
-            window.set(logRef, {
-                uid: user.uid,
-                name: user.displayName,
-                email: user.email,
-                phone: phoneNumber,
-                time: nowStr
-            });
-
-            // Update User Profile in DB
-            window.update(userRef, {
-                name: user.displayName,
-                email: user.email,
-                phone: phoneNumber,
-                last_login: nowStr
-            });
-
-            // Unlock App
+            window.set(logRef, { uid: user.uid, name: user.displayName, email: user.email, phone: phoneNumber, time: nowStr });
+            window.update(userRef, { name: user.displayName, email: user.email, phone: phoneNumber, last_login: nowStr });
             document.getElementById('login-screen').style.top = '-100%';
-            window.listenCloud(); // Start Data Sync
+            window.listenCloud();
         }
     </script>
 
     <script>
-        // --- MAIN APP LOGIC ---
         let map = L.map('map', { zoomControl: false, maxZoom: 22 }).setView([10.762, 106.660], 12);
         L.control.zoom({ position: 'topright' }).addTo(map);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri', maxNativeZoom: 19, maxZoom: 22 }).addTo(map);
@@ -243,17 +221,50 @@
         layers.fault.setZIndex(9999);
         
         let appData = { poles: {}, segments: {}, circuits: {}, mcStates: {}, grounded: {}, areas: [] }; 
-        window.pendingAction = null; let currentPath = []; let currentPathTotalDist = 0; let userLocation = null;
+        window.pendingAction = null; let currentPath = []; let currentPathTotalDist = 0; 
         
+        let userLocation = null;
+        let isPickingUserLocation = false;
+
         function setNowToInput() {
             const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('incidentTime').value = now.toISOString().slice(0,16);
         }
         setNowToInput();
+        
+        map.locate({setView: false, maxZoom: 16}); // Auto locate
 
         function togglePanel() { document.getElementById('control-panel').classList.toggle('active'); }
-        function locateUser() { map.locate({setView: true, maxZoom: 16}); }
-        map.on('locationfound', function(e) { userLocation = e.latlng; L.circle(e.latlng, {radius: e.accuracy/2, color:'blue', fillOpacity:0.1}).addTo(map); L.circleMarker(e.latlng, {radius:5, color:'white', fillColor:'blue', fillOpacity:1}).addTo(map); });
+        
+        window.handleGpsClick = function() {
+            if(isPickingUserLocation) { isPickingUserLocation = false; document.getElementById('pick-notice').style.display = 'none'; return; }
+            document.getElementById('btn-gps').style.color = '#555';
+            map.locate({setView: true, maxZoom: 16});
+        }
+
+        map.on('locationfound', function(e) { setUserLocation(e.latlng); });
+        
+        map.on('locationerror', function(e) {
+            let btn = document.getElementById('btn-gps'); btn.classList.remove('active');
+            if(confirm("⚠️ Không thể lấy GPS. Chấm tay vị trí của bạn?")) { enableManualPick(); }
+        });
+
+        function enableManualPick() {
+            isPickingUserLocation = true; togglePanel();
+            document.getElementById('pick-notice').style.display = 'block';
+            document.getElementById('btn-gps').classList.add('manual');
+        }
+
+        function setUserLocation(latlng) {
+            userLocation = latlng;
+            map.eachLayer(layer => { if(layer.options.id === 'user_marker') map.removeLayer(layer); });
+            L.circleMarker(latlng, {id: 'user_marker', radius:8, color:'white', fillColor:'#0078d7', fillOpacity:1, weight: 2}).addTo(map).bindPopup("Vị trí của bạn").openPopup();
+            document.getElementById('btn-gps').classList.add('active'); document.getElementById('btn-gps').classList.remove('manual');
+            isPickingUserLocation = false; document.getElementById('pick-notice').style.display = 'none';
+        }
+
+        map.on('click', function(e) { if(isPickingUserLocation) setUserLocation(e.latlng); });
+
         function updateLayerVisibility() { let z = map.getZoom(); if (z < 15) { if(map.hasLayer(layers.minor)) map.removeLayer(layers.minor); if(map.hasLayer(layers.mc)) map.removeLayer(layers.mc); } else { if(!map.hasLayer(layers.minor)) map.addLayer(layers.minor); if(!map.hasLayer(layers.mc)) map.addLayer(layers.mc); } }
         map.on('zoomend', updateLayerVisibility);
 
@@ -333,7 +344,6 @@
             let btn = document.getElementById('btn-find-fault');
             let oldText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tính toán...'; btn.disabled = true;
-            if (!userLocation) { map.locate({setView: false, maxZoom: 16}); }
 
             setTimeout(() => {
                 try {
@@ -526,6 +536,7 @@
         window.closeWinDialog = function() { document.getElementById('custom-confirm').style.display = 'none'; window.pendingAction = null; }
         window.toggleGrounding = function() { let cid = document.getElementById('circuitSelect').value; if(!cid) return; let currentG = appData.grounded ? appData.grounded[cid] : false; window.update(window.ref(window.db, 'he_thong_luoi_dien/grounded'), { [cid]: !currentG }); }
 
+        // --- ADD LEGEND & FAULT BOX (STATIC) ---
         var legendControl = L.control({position: 'bottomright'});
         legendControl.onAdd = function (map) { var div = L.DomUtil.create('div', 'legend'); div.innerHTML = `<div class="legend-item"><span class="legend-icon" style="background:#ff0000;"></span> Đóng (Đỏ)</div><div class="legend-item"><span class="legend-icon" style="background:#388e3c;"></span> Cắt (Xanh)</div>`; return div; };
         legendControl.addTo(map);
@@ -557,6 +568,7 @@
             return div; 
         };
         faultControl.addTo(map);
+
     </script>
 </body>
 </html>
