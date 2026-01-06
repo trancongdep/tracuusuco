@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vận Hành Lưới Điện - Mobile v1.20</title>
+    <title>Vận Hành Lưới Điện - Mobile v1.21</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#004d40">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1165/1165187.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
@@ -49,13 +48,11 @@
         button.action-btn { padding: 12px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px; transition: 0.2s; color: white; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
         .btn-find { background: #d32f2f; }
         .btn-ground { background: #0288d1; }
-        
-        /* GPS BUTTON */
         .btn-gps { position: absolute; top: 70px; right: 10px; z-index: 2000; background: white; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: none; font-size: 1.2rem; color: #555; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color 0.3s; }
         .btn-gps.active { color: #0078d7; border: 2px solid #0078d7; } 
         .btn-gps.manual { color: #e65100; border: 2px solid #e65100; }
 
-        /* GUIDE BUTTON (NEW) */
+        /* GUIDE BUTTON */
         .btn-guide { 
             position: absolute; top: 120px; right: 10px; z-index: 2000; 
             background: white; width: 40px; height: 40px; border-radius: 50%; 
@@ -70,7 +67,7 @@
         .radio-group input { width: 20px; height: 20px; margin-right: 8px; }
 
         #custom-confirm { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
-        .win-dialog { background: #fff; width: 90%; max-width: 350px; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: popIn 0.2s ease-out; }
+        .win-dialog { background: #f0f0f0; width: 90%; max-width: 400px; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); animation: popIn 0.2s ease-out; }
         .win-body { padding: 20px; text-align: center; }
         .win-footer { padding: 10px; background: #f5f5f5; display: flex; gap: 10px; }
         .win-btn { flex: 1; padding: 10px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
@@ -96,6 +93,7 @@
         .weather-alert { color: #d32f2f; font-weight: bold; margin-top: 4px; border-top: 1px dashed #d32f2f; padding-top: 4px; display: flex; align-items: center; gap: 5px; }
         .weather-flood { color: #0d47a1; font-weight: bold; margin-top: 4px; border-top: 1px dashed #0d47a1; padding-top: 4px; display: flex; align-items: center; gap: 5px; }
 
+        /* ICONS */
         .my-icon { border: 1px solid white; box-shadow: 1px 1px 3px rgba(0,0,0,0.6); text-align: center; font-size: 9px; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; }
         .icon-tru-do { background: #1976d2; border-radius: 50%; border: 2px solid white; }
         .icon-tru-neo { background: #1976d2; border-radius: 2px; border: 2px solid white; }
@@ -125,7 +123,7 @@
     <div id="pick-notice" style="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:8px 15px;border-radius:20px;z-index:5000;font-size:0.9rem;display:none;box-shadow:0 4px 10px rgba(0,0,0,0.3);pointer-events:none;">👇 Chấm vào bản đồ để chọn vị trí của bạn</div>
     
     <div class="app-bar">
-        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.20</div>
+        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.21</div>
         <button class="btn-menu" onclick="togglePanel()"><i class="fas fa-bars"></i></button>
     </div>
 
@@ -198,7 +196,14 @@
         const auth = getAuth(app);
         const provider = new GoogleAuthProvider();
 
-        window.db = getDatabase(app); window.update = update; window.ref = ref; window.onValue = onValue; window.set = set; window.get = get; window.child = child;
+        // FIX: Export missing functions to window
+        window.db = getDatabase(app); 
+        window.update = update; 
+        window.ref = ref; 
+        window.onValue = onValue; 
+        window.set = set; // Critical for saving logs
+        window.get = get; // Critical for checking user
+        window.child = child;
         
         window.signIn = () => {
             signInWithPopup(auth, provider).catch((error) => {
@@ -215,38 +220,46 @@
         });
 
         async function checkAndSaveUser(user) {
-            const userRef = window.ref(window.db, 'users/' + user.uid);
-            let snapshot = await window.get(userRef);
-            let userData = snapshot.val();
-            
-            let phoneNumber = "";
-            if (userData && userData.phone) {
-                phoneNumber = userData.phone;
-            } else {
-                let p = prompt("Vui lòng nhập Số điện thoại của bạn để xác nhận (Bắt buộc):");
-                if(p) phoneNumber = p;
-                else phoneNumber = "Không cung cấp";
+            try {
+                const userRef = window.ref(window.db, 'users/' + user.uid);
+                let snapshot = await window.get(userRef);
+                let userData = snapshot.val();
+                
+                let phoneNumber = "";
+                if (userData && userData.phone) {
+                    phoneNumber = userData.phone;
+                } else {
+                    let p = prompt("Vui lòng nhập Số điện thoại của bạn để xác nhận (Bắt buộc):");
+                    if(p) phoneNumber = p;
+                    else phoneNumber = "Không cung cấp";
+                }
+
+                let nowStr = new Date().toISOString();
+                const logRef = window.ref(window.db, 'system_logs/logins/' + Date.now());
+                
+                // SAVE LOG (Fix applied here)
+                await window.set(logRef, {
+                    uid: user.uid,
+                    name: user.displayName,
+                    email: user.email,
+                    phone: phoneNumber,
+                    time: nowStr
+                });
+
+                // UPDATE PROFILE
+                await window.update(userRef, {
+                    name: user.displayName,
+                    email: user.email,
+                    phone: phoneNumber,
+                    last_login: nowStr
+                });
+
+                document.getElementById('login-screen').style.top = '-100%';
+                window.listenCloud();
+            } catch (e) {
+                console.error("Login Error:", e);
+                alert("Lỗi lưu dữ liệu đăng nhập: " + e.message + ". Vui lòng kiểm tra Rules trên Firebase.");
             }
-
-            let nowStr = new Date().toISOString();
-            const logRef = window.ref(window.db, 'system_logs/logins/' + Date.now());
-            window.set(logRef, {
-                uid: user.uid,
-                name: user.displayName,
-                email: user.email,
-                phone: phoneNumber,
-                time: nowStr
-            });
-
-            window.update(userRef, {
-                name: user.displayName,
-                email: user.email,
-                phone: phoneNumber,
-                last_login: nowStr
-            });
-
-            document.getElementById('login-screen').style.top = '-100%';
-            window.listenCloud();
         }
     </script>
 
@@ -257,22 +270,19 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { opacity:0.4, maxNativeZoom: 19, maxZoom: 22 }).addTo(map);
         
         map.createPane('areaPane'); map.getPane('areaPane').style.zIndex = 200;
-        let layers = { areas: L.layerGroup().addTo(map), main: L.layerGroup().addTo(map), minor: L.layerGroup().addTo(map), important: L.layerGroup().addTo(map), mc: L.layerGroup().addTo(map), fault: L.layerGroup().addTo(map) };
+        let layers = { areas: L.layerGroup().addTo(map), main: L.layerGroup().addTo(map), minor: L.layerGroup().addTo(map), important: L.layerGroup().addTo(map), mc: L.layerGroup().addTo(map), fault: L.layerGroup().addTo(map), editHighlight: L.layerGroup().addTo(map) };
         layers.fault.setZIndex(9999);
         
         let appData = { poles: {}, segments: {}, circuits: {}, mcStates: {}, grounded: {}, areas: [] }; 
-        window.pendingAction = null; let currentPath = []; let currentPathTotalDist = 0; 
+        window.pendingAction = null; let currentPath = []; let currentPathTotalDist = 0; let pickingMode = null; let tempAreaPoints = []; let tempAreaPoly = null;
+        let currentEditingCircuit = []; let userLocation = null; let isPickingUserLocation = false;
         
-        let userLocation = null;
-        let isPickingUserLocation = false;
-
         function setNowToInput() {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('incidentTime').value = now.toISOString().slice(0,16);
         }
         setNowToInput();
-        
+
         map.locate({setView: false, maxZoom: 16});
 
         function togglePanel() { document.getElementById('control-panel').classList.toggle('active'); }
@@ -407,8 +417,7 @@
             let oldText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tính toán...'; btn.disabled = true;
 
-            // TRY TO LOCATE IF MISSING
-            if (!userLocation) { map.locate({setView: false, maxZoom: 16, enableHighAccuracy: true, timeout: 5000}); }
+            if (!userLocation) { map.locate({setView: false, maxZoom: 16}); }
 
             setTimeout(() => {
                 try {
@@ -443,13 +452,13 @@
                             for (let j = i; j < currentPath.length; j++) { if (currentPath[j].name) { n2 = currentPath[j].name; break; } }
 
                             if(faultBox) {
-                                faultBox.style.display='flex'; faultBox.classList.remove('minimized');
+                                faultBox.style.display='block';
+                                faultBox.classList.remove('minimized');
                                 
-                                // NEW FORMATTED TEXT
                                 let infoText = `Lúc ${timeStr}, bật đường dây ${cName}, cách ${dirText}: ${kmInput} km, vị trí dự kiến: khoảng trụ ${n1} - ${n2}.`;
                                 
                                 document.getElementById('fi-text-content').innerHTML = infoText;
-                                document.getElementById('fi-addr').innerHTML=`<a href="http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}" target="_blank">Google Maps</a>`; 
+                                document.getElementById('fi-addr').innerHTML=`<a href="http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}" target="_blank">Mở Google Maps</a>`; 
                                 document.getElementById('fi-addr-text').innerText = '⏳ Đang lấy...';
                                 document.getElementById('route-info').innerHTML = '<i>⏳ Đang tính lộ trình...</i>'; document.getElementById('route-info').style.display='flex';
                                 document.getElementById('fault-weather').innerHTML = '<i>⏳ Đang tải thời tiết...</i>'; document.getElementById('fault-weather').style.display='block';
@@ -557,8 +566,7 @@
                 if (data.hourly) {
                     let targetTime = new Date(incidentTime);
                     let times = data.hourly.time.map(t => new Date(t));
-                    let index = -1;
-                    let minDiff = Infinity;
+                    let index = -1; let minDiff = Infinity;
                     for(let i=0; i<times.length; i++) {
                         let diff = Math.abs(times[i] - targetTime);
                         if(diff < minDiff) { minDiff = diff; index = i; }
@@ -572,13 +580,10 @@
                         let windDeg = data.hourly.wind_direction_10m[index];
                         let temp = data.hourly.temperature_2m[index];
                         
-                        // NIGHT MODE CHECK
                         let hour = targetTime.getHours();
                         let isNight = hour < 6 || hour > 18;
-
                         let condition = "Nắng/Ít mây";
-                        if(isNight) condition = "Quang mây/Có sao"; // Night text
-
+                        if(isNight) condition = "Quang mây/Có sao";
                         if(code > 3) condition = "Nhiều mây";
                         if(code >= 51) condition = "Mưa";
                         if(isStorm) condition = "Dông sét";
@@ -601,7 +606,6 @@
         window.closeWinDialog = function() { document.getElementById('custom-confirm').style.display = 'none'; window.pendingAction = null; }
         window.toggleGrounding = function() { let cid = document.getElementById('circuitSelect').value; if(!cid) return; let currentG = appData.grounded ? appData.grounded[cid] : false; window.update(window.ref(window.db, 'he_thong_luoi_dien/grounded'), { [cid]: !currentG }); }
 
-        // --- ADD LEGEND & FAULT BOX (STATIC) ---
         var legendControl = L.control({position: 'bottomright'});
         legendControl.onAdd = function (map) { var div = L.DomUtil.create('div', 'legend'); div.innerHTML = `<div class="legend-item"><span class="legend-icon" style="background:#ff0000;"></span> Đóng (Đỏ)</div><div class="legend-item"><span class="legend-icon" style="background:#388e3c;"></span> Cắt (Xanh)</div>`; return div; };
         legendControl.addTo(map);
