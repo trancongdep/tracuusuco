@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng Dẫn Sử Dụng - Vận Hành Lưới Điện</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #004d40;
+            --secondary: #00796b;
+            --accent: #ff6f00;
+            --light: #f5f5f5;
+            --text: #333;
+            --sidebar-width: 280px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: var(--text); background: #f0f2f5; display: flex; height: 100vh; overflow: hidden; }
+
+        /* SIDEBAR */
+        aside {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: fixed;
+            left: 0; top: 0;
+            z-index: 1000;
+            transition: transform 0.3s;
+        }
+
+        .brand { padding: 20px; background: var(--primary); color: white; text-align: center; }
+        .brand h2 { font-size: 1.2rem; margin-bottom: 5px; }
+        .brand p { font-size: 0.8rem; opacity: 0.8; }
+
+        .search-box { padding: 15px; border-bottom: 1px solid #eee; }
+        .search-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+
+        .nav-links { flex: 1; overflow-y: auto; padding: 10px 0; }
+        .nav-links a { display: block; padding: 12px 20px; color: var(--text); text-decoration: none; border-left: 4px solid transparent; transition: 0.2s; font-size: 0.95rem; }
+        .nav-links a:hover, .nav-links a.active { background: #e0f2f1; border-left-color: var(--primary); color: var(--primary); font-weight: 600; }
+        .nav-links i { margin-right: 10px; width: 20px; text-align: center; }
+
+        /* MAIN CONTENT */
+        main {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        .container { max-width: 900px; margin: 0 auto; }
+
+        section { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 30px; scroll-margin-top: 20px; }
+        h1 { color: var(--primary); margin-bottom: 10px; border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 5px; }
+        h2 { color: var(--secondary); margin-top: 20px; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        h3 { color: #555; margin-top: 15px; margin-bottom: 10px; font-size: 1.1rem; }
+        p, li { margin-bottom: 10px; }
+        ul { margin-left: 20px; }
+        
+        /* ALERTS & BOXES */
+        .note { background: #fff3cd; border-left: 5px solid #ffc107; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .tip { background: #d1e7dd; border-left: 5px solid #198754; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .step { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #bbdefb; }
+        .step strong { color: #0d47a1; }
+
+        /* ICON KEY */
+        .icon-key { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .icon-box { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #eee; border-radius: 50%; }
+
+        /* MOBILE RESPONSIVE */
+        .mobile-toggle { display: none; position: fixed; bottom: 20px; right: 20px; background: var(--primary); color: white; width: 50px; height: 50px; border-radius: 50%; align-items: center; justify-content: center; z-index: 2000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; }
+
+        @media (max-width: 768px) {
+            aside { transform: translateX(-100%); width: 85%; }
+            aside.active { transform: translateX(0); }
+            main { margin-left: 0; padding: 15px; }
+            .mobile-toggle { display: flex; }
+            .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
+            .overlay.active { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mobile-toggle" onclick="toggleMenu()"><i class="fas fa-bars"></i></div>
+    <div class="overlay" onclick="toggleMenu()"></div>
+
+    <aside id="sidebar">
+        <div class="brand">
+            <h2><i class="fas fa-bolt"></i> LƯỚI ĐIỆN APP</h2>
+            <p>Phiên bản v1.19</p>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="Tìm kiếm chức năng..." onkeyup="filterContent()">
+        </div>
+        <div class="nav-links">
+            <a href="#intro" class="active"><i class="fas fa-info-circle"></i> Giới thiệu</a>
+            <a href="#install"><i class="fas fa-download"></i> 1. Cài đặt (PWA)</a>
+            <a href="#login"><i class="fas fa-sign-in-alt"></i> 2. Đăng nhập</a>
+            <a href="#interface"><i class="fas fa-mobile-alt"></i> 3. Giao diện chính</a>
+            <a href="#fault-finding"><i class="fas fa-search-location"></i> 4. Tìm sự cố (Chính)</a>
+            <a href="#weather"><i class="fas fa-cloud-sun"></i> 5. Thời tiết & Lộ trình</a>
+            <a href="#report"><i class="fas fa-camera"></i> 6. Báo cáo & Ảnh</a>
+            <a href="#troubleshoot"><i class="fas fa-tools"></i> Xử lý lỗi GPS</a>
+        </div>
+    </aside>
+
+    <main>
+        <div class="container">
+            
+            <section id="intro">
+                <h1>Hướng Dẫn Sử Dụng</h1>
+                <p>Chào mừng bạn đến với ứng dụng <strong>Vận Hành Lưới Điện Mobile</strong>. Đây là công cụ hỗ trợ nhân viên vận hành hiện trường tra cứu nhanh sơ đồ lưới điện, tìm kiếm vị trí sự cố theo khoảng cách Rơ-le và dẫn đường.</p>
+                <div class="tip">
+                    <i class="fas fa-check-circle"></i> <strong>Yêu cầu:</strong> Điện thoại có kết nối Internet (4G/Wifi) và Bật định vị (GPS).
+                </div>
+            </section>
+
+            <section id="install">
+                <h2>1. Cài đặt ứng dụng (PWA)</h2>
+                <p>Để ứng dụng chạy mượt mà, toàn màn hình và không hiện thanh địa chỉ web, hãy cài đặt ra màn hình chính:</p>
+                
+                <h3><i class="fab fa-apple"></i> Trên iPhone (iOS - Safari)</h3>
+                <ol style="margin-left: 20px;">
+                    <li>Mở link web bằng trình duyệt <strong>Safari</strong>.</li>
+                    <li>Bấm nút <strong>Chia sẻ (Share)</strong> <i class="fas fa-share-square"></i> ở giữa thanh dưới cùng.</li>
+                    <li>Kéo xuống chọn <strong>"Thêm vào MH chính" (Add to Home Screen)</strong>.</li>
+                    <li>Bấm <strong>Thêm (Add)</strong>.</li>
+                </ol>
+
+                <h3 style="margin-top:15px;"><i class="fab fa-android"></i> Trên Android (Chrome)</h3>
+                <ol style="margin-left: 20px;">
+                    <li>Mở link web bằng <strong>Google Chrome</strong>.</li>
+                    <li>Bấm dấu <strong>3 chấm dọc</strong> <i class="fas fa-ellipsis-v"></i> ở góc trên phải.</li>
+                    <li>Chọn <strong>"Cài đặt ứng dụng"</strong> hoặc <strong>"Thêm vào màn hình chính"</strong>.</li>
+                </ol>
+            </section>
+
+            <section id="login">
+                <h2>2. Đăng nhập hệ thống</h2>
+                <p>Vì lý do bảo mật và thống kê, người dùng cần đăng nhập:</p>
+                <div class="step">
+                    <strong>Bước 1:</strong> Tại màn hình khóa màu xanh, bấm nút <strong>"Đăng nhập bằng Google"</strong>.
+                </div>
+                <div class="step">
+                    <strong>Bước 2:</strong> Chọn tài khoản Gmail của bạn.
+                </div>
+                <div class="step">
+                    <strong>Bước 3:</strong> (Chỉ lần đầu) Nhập <strong>Số điện thoại</strong> của bạn để hệ thống lưu hồ sơ.
+                </div>
+                <div class="note">
+                    <i class="fas fa-exclamation-triangle"></i> Hệ thống sẽ tự động ghi nhận thời gian bạn đăng nhập để báo cáo quản lý.
+                </div>
+            </section>
+
+            <section id="interface">
+                <h2>3. Giao diện & Ký hiệu</h2>
+                <p>Màn hình chính gồm Bản đồ và các nút điều khiển.</p>
+                
+                <h3>Các nút chức năng:</h3>
+                <div class="icon-key"><div class="icon-box"><i class="fas fa-bars"></i></div> <strong>Menu:</strong> Mở bảng điều khiển tìm kiếm (ở góc trái).</div>
+                <div class="icon-key"><div class="icon-box"><i class="fas fa-crosshairs"></i></div> <strong>GPS:</strong> Định vị vị trí của bạn. Nếu màu xanh là đã bắt được GPS.</div>
+
+                <h3>Ký hiệu trên bản đồ:</h3>
+                <ul style="list-style: none;">
+                    <li><span style="color:red">🟥</span> <strong>Máy cắt Đóng:</strong> Có điện (Đỏ).</li>
+                    <li><span style="color:green">🟩</span> <strong>Máy cắt Mở:</strong> Mất điện (Xanh lá).</li>
+                    <li><span style="color:#0078d7">🟦</span> <strong>Tiếp địa:</strong> Đoạn dây đang nối đất an toàn.</li>
+                    <li><i class="fas fa-bolt" style="color:red"></i> <strong>Tia sét:</strong> Vị trí sự cố tìm thấy.</li>
+                </ul>
+            </section>
+
+            <section id="fault-finding">
+                <h2>4. Tìm kiếm sự cố (Chức năng chính)</h2>
+                <p>Sử dụng khi nhận được thông báo khoảng cách sự cố từ Rơ-le bảo vệ.</p>
+
+                <div class="step">1. Bấm nút <strong>Menu</strong> <i class="fas fa-bars"></i> để mở bảng điều khiển.</div>
+                <div class="step">2. Chọn <strong>Tên mạch dây</strong> cần kiểm tra. Bản đồ sẽ zoom đến mạch đó.</div>
+                <div class="step">3. Kiểm tra <strong>Thời điểm sự cố</strong> (Mặc định là giờ hiện tại, có thể chỉnh lại).</div>
+                <div class="step">4. Nhập <strong>Khoảng cách (Km)</strong> báo về từ máy đo.</div>
+                <div class="step">5. Chọn hướng: <strong>Từ Đầu</strong> hoặc <strong>Từ Cuối</strong>.</div>
+                <div class="step">6. Bấm nút đỏ <strong>TÌM VỊ TRÍ</strong>.</div>
+
+                <p><strong>Kết quả:</strong> Bản đồ sẽ zoom sâu vào điểm sự cố (mức zoom 18) và hiện bảng thông tin chi tiết.</p>
+            </section>
+
+            <section id="weather">
+                <h2>5. Thời tiết & Lộ trình</h2>
+                <p>Khi tìm thấy điểm sự cố, bảng thông tin sẽ cung cấp:</p>
+                
+                <h3><i class="fas fa-cloud-sun-rain"></i> Thời tiết tại chỗ:</h3>
+                <ul>
+                    <li>Dữ liệu lấy theo <strong>Lịch sử giờ sự cố</strong> (nếu sự cố xảy ra trong quá khứ) hoặc hiện tại.</li>
+                    <li><strong>Cảnh báo Dông sét:</strong> Nếu có sấm sét, dòng cảnh báo đỏ sẽ hiện lên.</li>
+                    <li><strong>Nguy cơ Ngập:</strong> Nếu mưa > 10mm, sẽ cảnh báo ngập.</li>
+                    <li><strong>Hướng gió:</strong> Biểu thị bằng mũi tên xoay <i class="fas fa-arrow-up"></i> (Mũi tên chỉ hướng gió thổi đi).</li>
+                    <li><strong>Chế độ Ban đêm:</strong> Tự động chuyển trạng thái "Nắng" thành "Quang mây" nếu là ban đêm.</li>
+                </ul>
+
+                <h3 style="margin-top:15px;"><i class="fas fa-route"></i> Lộ trình di chuyển:</h3>
+                <ul>
+                    <li>Tính toán khoảng cách từ <strong>Vị trí của bạn</strong> đến <strong>Điểm sự cố</strong>.</li>
+                    <li>Ước lượng thời gian đi bằng <strong>Xe máy</strong>.</li>
+                    <li>Nếu không có đường xe, tự động chuyển sang chế độ <strong>Đi bộ</strong> hoặc <strong>Đường chim bay</strong>.</li>
+                </ul>
+            </section>
+
+            <section id="report">
+                <h2>6. Báo cáo & Chia sẻ</h2>
+                <p>Để gửi nhanh thông tin cho nhóm Zalo điều hành:</p>
+                <ul>
+                    <li><strong>Thu nhỏ bảng:</strong> Bấm dấu <i class="fas fa-minus"></i> để thu gọn bảng nếu che khuất bản đồ.</li>
+                    <li><strong>Chụp ảnh báo cáo:</strong> Bấm nút máy ảnh <i class="fas fa-camera"></i>.</li>
+                </ul>
+                <div class="tip">
+                    <i class="fas fa-lightbulb"></i> Khi bấm chụp, ứng dụng sẽ tự động tải về một file ảnh <strong>bao_cao_su_co.png</strong> chứa đầy đủ thông tin. Bạn chỉ cần mở Zalo và gửi ảnh đó.
+                </div>
+            </section>
+
+            <section id="troubleshoot">
+                <h2>Xử lý lỗi thường gặp</h2>
+                
+                <h3>Lỗi: "Chưa lấy được vị trí GPS"</h3>
+                <p>Do trình duyệt chặn quyền hoặc sóng yếu. Cách khắc phục:</p>
+                <ol>
+                    <li>Bấm vào nút GPS <i class="fas fa-crosshairs"></i> trên màn hình.</li>
+                    <li>Nếu vẫn lỗi, một hộp thoại sẽ hiện ra hỏi: <em>"Chấm tay vị trí của bạn?"</em>. Hãy chọn <strong>OK</strong>.</li>
+                    <li>Chạm ngón tay vào vị trí bạn đang đứng trên bản đồ. Hệ thống sẽ dùng điểm đó làm mốc để tính đường đi.</li>
+                </ol>
+
+                <h3 style="margin-top:10px;">Lỗi: Đăng nhập không được</h3>
+                <p>Kiểm tra kết nối mạng hoặc báo Admin thêm email của bạn vào danh sách cho phép.</p>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // Toggle Mobile Menu
+        function toggleMenu() {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.querySelector('.overlay').classList.toggle('active');
+        }
+
+        // Search Function
+        function filterContent() {
+            let input = document.getElementById('searchInput').value.toLowerCase();
+            let sections = document.querySelectorAll('section');
+            let links = document.querySelectorAll('.nav-links a');
+
+            sections.forEach(section => {
+                let text = section.innerText.toLowerCase();
+                if (text.includes(input)) {
+                    section.style.display = "block";
+                } else {
+                    section.style.display = "none";
+                }
+            });
+        }
+
+        // Active Link on Scroll
+        const sections = document.querySelectorAll("section");
+        const navLi = document.querySelectorAll(".nav-links a");
+
+        window.onscroll = () => {
+            var current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 60) {
+                    current = section.getAttribute("id");
+                }
+            });
+
+            navLi.forEach((li) => {
+                li.classList.remove("active");
+                if (li.getAttribute("href").includes(current)) {
+                    li.classList.add("active");
+                }
+            });
+        };
+    </script>
+</body>
+</html>
