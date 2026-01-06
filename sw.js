@@ -1,6 +1,6 @@
 // --- CẤU HÌNH PHIÊN BẢN ---
 // KHI CÓ SỬA ĐỔI CODE WEB, HÃY TĂNG SỐ PHIÊN BẢN Ở DÒNG DƯỚI ĐỂ APP TỰ CẬP NHẬT
-const CACHE_NAME = 'luoi-dien-cache-v1.19'; 
+const CACHE_NAME = 'luoi-dien-cache-v1.20'; 
 
 const urlsToCache = [
   './index.html',
