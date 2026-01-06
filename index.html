@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Vận Hành Lưới Điện - Mobile v1.19</title>
+    <title>Vận Hành Lưới Điện - Mobile v1.20</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#004d40">
@@ -49,9 +49,21 @@
         button.action-btn { padding: 12px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px; transition: 0.2s; color: white; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 8px; }
         .btn-find { background: #d32f2f; }
         .btn-ground { background: #0288d1; }
-        .btn-gps { position: absolute; top: 70px; right: 10px; z-index: 2000; background: white; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: none; font-size: 1.2rem; color: #0078d7; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        /* GPS BUTTON */
+        .btn-gps { position: absolute; top: 70px; right: 10px; z-index: 2000; background: white; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: none; font-size: 1.2rem; color: #555; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color 0.3s; }
         .btn-gps.active { color: #0078d7; border: 2px solid #0078d7; } 
         .btn-gps.manual { color: #e65100; border: 2px solid #e65100; }
+
+        /* GUIDE BUTTON (NEW) */
+        .btn-guide { 
+            position: absolute; top: 120px; right: 10px; z-index: 2000; 
+            background: white; width: 40px; height: 40px; border-radius: 50%; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: none; 
+            font-size: 1.2rem; color: #004d40; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; text-decoration: none;
+        }
 
         .radio-group { display: flex; flex-direction: row; align-items: center; gap: 30px; margin-bottom: 15px; width: 100%; }
         .radio-group label { margin: 0; font-weight: normal; cursor: pointer; display: flex; align-items: center; font-size: 1rem; }
@@ -113,11 +125,15 @@
     <div id="pick-notice" style="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:8px 15px;border-radius:20px;z-index:5000;font-size:0.9rem;display:none;box-shadow:0 4px 10px rgba(0,0,0,0.3);pointer-events:none;">👇 Chấm vào bản đồ để chọn vị trí của bạn</div>
     
     <div class="app-bar">
-        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.19</div>
+        <div class="app-title">⚡ VẬN HÀNH LƯỚI ĐIỆN v1.20</div>
         <button class="btn-menu" onclick="togglePanel()"><i class="fas fa-bars"></i></button>
     </div>
 
     <button class="btn-gps" id="btn-gps" onclick="handleGpsClick()"><i class="fas fa-crosshairs"></i></button>
+
+    <a href="https://trancongdep.github.io/tracuusuco/huongdan.html" target="_blank" class="btn-guide" title="Hướng dẫn sử dụng">
+        <i class="fas fa-book"></i>
+    </a>
 
     <div id="control-panel">
         <div class="panel-header">
@@ -186,25 +202,49 @@
         
         window.signIn = () => {
             signInWithPopup(auth, provider).catch((error) => {
-                document.getElementById('login-status').innerText = "Lỗi: " + error.message;
+                document.getElementById('login-status').innerText = "Lỗi đăng nhập: " + error.message;
             });
         };
 
         onAuthStateChanged(auth, (user) => {
-            if (user) { checkAndSaveUser(user); } 
-            else { document.getElementById('login-screen').style.top = '0'; }
+            if (user) {
+                checkAndSaveUser(user);
+            } else {
+                document.getElementById('login-screen').style.top = '0';
+            }
         });
 
         async function checkAndSaveUser(user) {
             const userRef = window.ref(window.db, 'users/' + user.uid);
             let snapshot = await window.get(userRef);
             let userData = snapshot.val();
-            let phoneNumber = (userData && userData.phone) ? userData.phone : (prompt("Nhập Số điện thoại xác nhận:") || "Không cung cấp");
+            
+            let phoneNumber = "";
+            if (userData && userData.phone) {
+                phoneNumber = userData.phone;
+            } else {
+                let p = prompt("Vui lòng nhập Số điện thoại của bạn để xác nhận (Bắt buộc):");
+                if(p) phoneNumber = p;
+                else phoneNumber = "Không cung cấp";
+            }
 
             let nowStr = new Date().toISOString();
             const logRef = window.ref(window.db, 'system_logs/logins/' + Date.now());
-            window.set(logRef, { uid: user.uid, name: user.displayName, email: user.email, phone: phoneNumber, time: nowStr });
-            window.update(userRef, { name: user.displayName, email: user.email, phone: phoneNumber, last_login: nowStr });
+            window.set(logRef, {
+                uid: user.uid,
+                name: user.displayName,
+                email: user.email,
+                phone: phoneNumber,
+                time: nowStr
+            });
+
+            window.update(userRef, {
+                name: user.displayName,
+                email: user.email,
+                phone: phoneNumber,
+                last_login: nowStr
+            });
+
             document.getElementById('login-screen').style.top = '-100%';
             window.listenCloud();
         }
@@ -227,43 +267,65 @@
         let isPickingUserLocation = false;
 
         function setNowToInput() {
-            const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('incidentTime').value = now.toISOString().slice(0,16);
         }
         setNowToInput();
         
-        map.locate({setView: false, maxZoom: 16}); // Auto locate
+        map.locate({setView: false, maxZoom: 16});
 
         function togglePanel() { document.getElementById('control-panel').classList.toggle('active'); }
         
         window.handleGpsClick = function() {
-            if(isPickingUserLocation) { isPickingUserLocation = false; document.getElementById('pick-notice').style.display = 'none'; return; }
+            if(isPickingUserLocation) {
+                isPickingUserLocation = false;
+                document.getElementById('pick-notice').style.display = 'none';
+                return;
+            }
             document.getElementById('btn-gps').style.color = '#555';
             map.locate({setView: true, maxZoom: 16});
         }
 
-        map.on('locationfound', function(e) { setUserLocation(e.latlng); });
+        map.on('locationfound', function(e) { 
+            setUserLocation(e.latlng);
+        });
         
         map.on('locationerror', function(e) {
-            let btn = document.getElementById('btn-gps'); btn.classList.remove('active');
-            if(confirm("⚠️ Không thể lấy GPS. Chấm tay vị trí của bạn?")) { enableManualPick(); }
+            let btn = document.getElementById('btn-gps');
+            btn.classList.remove('active');
+            
+            if(confirm("⚠️ Không thể lấy vị trí GPS tự động (do lỗi trình duyệt hoặc chưa cấp quyền).\n\nBạn có muốn CHẤM TAY vị trí của bạn trên bản đồ không?")) {
+                enableManualPick();
+            }
         });
 
         function enableManualPick() {
-            isPickingUserLocation = true; togglePanel();
+            isPickingUserLocation = true;
+            togglePanel(); 
             document.getElementById('pick-notice').style.display = 'block';
-            document.getElementById('btn-gps').classList.add('manual');
+            document.getElementById('btn-gps').classList.add('manual'); 
         }
 
         function setUserLocation(latlng) {
             userLocation = latlng;
             map.eachLayer(layer => { if(layer.options.id === 'user_marker') map.removeLayer(layer); });
-            L.circleMarker(latlng, {id: 'user_marker', radius:8, color:'white', fillColor:'#0078d7', fillOpacity:1, weight: 2}).addTo(map).bindPopup("Vị trí của bạn").openPopup();
-            document.getElementById('btn-gps').classList.add('active'); document.getElementById('btn-gps').classList.remove('manual');
-            isPickingUserLocation = false; document.getElementById('pick-notice').style.display = 'none';
+
+            L.circleMarker(latlng, {id: 'user_marker', radius:8, color:'white', fillColor:'#0078d7', fillOpacity:1, weight: 2}).addTo(map)
+             .bindPopup("Vị trí của bạn").openPopup();
+            
+            let btn = document.getElementById('btn-gps');
+            btn.classList.add('active'); btn.classList.remove('manual');
+            
+            isPickingUserLocation = false;
+            document.getElementById('pick-notice').style.display = 'none';
         }
 
-        map.on('click', function(e) { if(isPickingUserLocation) setUserLocation(e.latlng); });
+        map.on('click', function(e) { 
+            if(isPickingUserLocation) {
+                setUserLocation(e.latlng);
+            }
+        });
 
         function updateLayerVisibility() { let z = map.getZoom(); if (z < 15) { if(map.hasLayer(layers.minor)) map.removeLayer(layers.minor); if(map.hasLayer(layers.mc)) map.removeLayer(layers.mc); } else { if(!map.hasLayer(layers.minor)) map.addLayer(layers.minor); if(!map.hasLayer(layers.mc)) map.addLayer(layers.mc); } }
         map.on('zoomend', updateLayerVisibility);
@@ -344,6 +406,9 @@
             let btn = document.getElementById('btn-find-fault');
             let oldText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tính toán...'; btn.disabled = true;
+
+            // TRY TO LOCATE IF MISSING
+            if (!userLocation) { map.locate({setView: false, maxZoom: 16, enableHighAccuracy: true, timeout: 5000}); }
 
             setTimeout(() => {
                 try {
