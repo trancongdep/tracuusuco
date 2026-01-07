@@ -2,6 +2,116 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Admin v2.04 - Quản Lý Lưới Điện</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #004d40;
+            --secondary-color: #00695c;
+            --accent-color: #ffca28;
+            --text-light: #f5f5f5;
+            --bg-light: #f4f6f8;
+            --sidebar-width: 250px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            background-color: var(--secondary-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; }
+        .sidebar-menu li { border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-menu li a {
+            display: block; padding: 15px 20px; color: var(--text-light);
+            text-decoration: none; display: flex; align-items: center; transition: background 0.2s;
+        }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active {
+            background-color: rgba(255,255,255,0.1); border-left: 4px solid var(--accent-color);
+        }
+        .sidebar-menu li a i { margin-right: 10px; width: 20px; text-align: center; }
+
+        .version-info {
+            padding: 10px; font-size: 0.8rem; text-align: center; opacity: 0.7; background: rgba(0,0,0,0.2);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; position: relative;
+        }
+
+        .top-bar {
+            background-color: white; padding: 10px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex; justify-content: space-between; align-items: center; z-index: 10;
+        }
+
+        .mobile-toggle { display: none; background: none; border: none; font-size: 1.5rem; color: var(--primary-color); cursor: pointer; }
+
+        .content-area { flex-grow: 1; padding: 20px; overflow-y: auto; }
+
+        .card { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 20px; }
+
+        /* Mobile Simulation Mode */
+        .mobile-view-wrapper {
+            display: flex; justify-content: center; align-items: center;
+            background: #2c3e50; padding: 20px; height: calc(100vh - 140px); border-radius: 8px;
+        }
+
+        .mobile-device {
+            width: 375px; height: 812px; /* iPhone X dimensions */
+            max-height: 100%;
+            background: white; border: 12px solid #1a1a1a; border-radius: 30px;
+            overflow: hidden; position: relative; box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .mobile-device iframe { width: 100%; height: 100%; border: none; }
+
+        @media (max-width: 768px) {
+            .sidebar { position: absolute; left: -250px; height: 100%; z-index: 1000; }
+            .sidebar.open { left: 0; }
+            .mobile-toggle { display: block; }
+            .mobile-device { width: 100%; height: 100%; border: none; border-radius: 0; }
+            .mobile-view-wrapper { padding: 0; height: calc(100vh - 60px); }
+        }
+    </style>
+</head>
+<body>
+
+    <script type="text/template" id="mobile-source-code">
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Vận Hành Lưới Điện - Mobile v1.21</title>
     
@@ -637,6 +747,160 @@
             return div; 
         };
         faultControl.addTo(map);
+
+    </script>
+</body>
+</html>
+    </script>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-bolt"></i> EVN ADMIN
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="#" onclick="switchTab('dashboard')" class="active" id="link-dashboard"><i class="fas fa-home"></i> Tổng quan</a></li>
+            <li><a href="#" onclick="switchTab('grid-map')" id="link-grid-map"><i class="fas fa-map-marked-alt"></i> Bản đồ Lưới điện</a></li>
+            <li><a href="#" onclick="switchTab('external-app')" id="link-external-app"><i class="fas fa-mobile-alt"></i> Tra cứu (Mobile App)</a></li>
+            <li><a href="#" onclick="switchTab('settings')" id="link-settings"><i class="fas fa-cog"></i> Cấu hình</a></li>
+        </ul>
+        <div class="version-info">
+            Version 2.04<br>
+            Updated: 2026-01-07
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <button class="mobile-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div id="page-title" style="font-weight: bold; color: var(--primary-color);">Tổng quan hệ thống</div>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i> Admin
+            </div>
+        </div>
+
+        <div class="content-area" id="main-container">
+            </div>
+    </div>
+
+    <script>
+        // --- 1. FIREBASE CONFIGURATION (Lưu trữ từ ngày 2025-12-16) ---
+        const firebaseConfig = { 
+            apiKey: "AIzaSyCzWjfcD5Dgq7V-i2izb9tKLR6QM6qWPQo", 
+            authDomain: "tavietnam-78ae8.firebaseapp.com", 
+            projectId: "tavietnam-78ae8", 
+            storageBucket: "tavietnam-78ae8.firebasestorage.app", 
+            messagingSenderId: "670121705534", 
+            appId: "1:670121705534:web:1027ad98550573ad37116f" 
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        } else {
+            firebase.app(); 
+        }
+        
+        // --- 2. LOGIC GIAO DIỆN ---
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+            document.getElementById('link-' + tabId).classList.add('active');
+
+            const container = document.getElementById('main-container');
+            const title = document.getElementById('page-title');
+
+            if(window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+            }
+
+            switch(tabId) {
+                case 'dashboard':
+                    title.innerText = "Tổng quan hệ thống";
+                    container.innerHTML = `
+                        <div class="card">
+                            <h2><i class="fas fa-tachometer-alt"></i> Trạng thái hoạt động</h2>
+                            <p>Chào mừng quay lại hệ thống quản lý lưới điện App Admin 2.04.</p>
+                            <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+                                <div style="flex: 1; background: #e0f2f1; padding: 20px; border-radius: 8px; text-align: center;">
+                                    <h3 style="margin: 0; color: #004d40;">12</h3>
+                                    <span>Sự cố đang xử lý</span>
+                                </div>
+                                <div style="flex: 1; background: #ffebee; padding: 20px; border-radius: 8px; text-align: center;">
+                                    <h3 style="margin: 0; color: #c62828;">3</h3>
+                                    <span>Cảnh báo đỏ</span>
+                                </div>
+                                <div style="flex: 1; background: #e3f2fd; padding: 20px; border-radius: 8px; text-align: center;">
+                                    <h3 style="margin: 0; color: #1565c0;">98%</h3>
+                                    <span>Độ ổn định</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'grid-map':
+                    title.innerText = "Bản đồ Lưới điện (Admin View)";
+                    container.innerHTML = `
+                        <div class="card" style="height: 100%;">
+                            <h2><i class="fas fa-map"></i> Bản đồ tổng quát</h2>
+                            <p>Chế độ xem quản trị viên (Đang phát triển)...</p>
+                            <div style="background: #eee; height: 400px; display: flex; align-items: center; justify-content: center; border-radius: 4px;">
+                                <span style="color: #999;">Map API Placeholder</span>
+                            </div>
+                        </div>
+                    `;
+                    break;
+
+                case 'external-app':
+                    title.innerText = "Giả lập Mobile App (v1.21)";
+                    // Lấy mã nguồn từ thẻ script template
+                    const mobileSource = document.getElementById('mobile-source-code').innerHTML;
+                    
+                    container.innerHTML = `
+                        <div style="display: flex; justify-content: center; margin-bottom: 10px; color: #666;">
+                            <span><i class="fas fa-mobile-alt"></i> Đang chạy phiên bản Mobile v1.21 trực tiếp</span>
+                        </div>
+                        <div class="mobile-view-wrapper">
+                            <div class="mobile-device">
+                                <iframe id="mobile-frame"></iframe>
+                            </div>
+                        </div>
+                    `;
+                    // Nhúng mã vào iframe sau khi render container
+                    setTimeout(() => {
+                        const frame = document.getElementById('mobile-frame');
+                        if(frame) {
+                            frame.contentWindow.document.open();
+                            frame.contentWindow.document.write(mobileSource);
+                            frame.contentWindow.document.close();
+                        }
+                    }, 100);
+                    break;
+
+                case 'settings':
+                    title.innerText = "Cấu hình hệ thống";
+                    container.innerHTML = `
+                        <div class="card">
+                            <h2>Thông tin phiên bản</h2>
+                            <p><strong>App Name:</strong> EVN Admin Panel</p>
+                            <p><strong>Version:</strong> 2.04</p>
+                            <p><strong>Mobile Core Version:</strong> 1.21 (Embedded)</p>
+                            <p><strong>Firebase Project:</strong> tavietnam-78ae8</p>
+                            <hr>
+                            <button style="background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Kiểm tra cập nhật</button>
+                        </div>
+                    `;
+                    break;
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            switchTab('dashboard');
+        });
 
     </script>
 </body>
